@@ -428,12 +428,16 @@ _LABEL_GAP = re.compile(r":[ \t\u00a0]*")
 _SUBJECT_PREFIXES = frozenset(_words("dotyczy fw fwd odp pd re temat"))
 
 #: A day of the month before a word and a year after it, or both after it in the American order:
-#: "15 Jan 2024", "15. Mai 2024", "Jan 15, 2024".
+#: "15 Jan 2024", "15. Mai 2024", "Jan 15, 2024", "15-Jan-2024", "2024-Jan-15".
+#: Hyphen, slash and dot count as the same gap as a space so dashed and slashed dates keep the month.
 _DAY = r"(?:0?[1-9]|[12]\d|3[01])"
-_DAY_BEFORE = re.compile(rf"(?<![\d.,:]){_DAY}\.?[ \t\u00a0]+$")
-_YEAR_AFTER = re.compile(r"\.?,?[ \t\u00a0]+(?:19|20)\d\d(?!\d)")
+_DATE_GAP = r"[ \t\u00a0./-]+"
+_DAY_BEFORE = re.compile(rf"(?<![\d.,:]){_DAY}\.?{_DATE_GAP}$")
+_YEAR_AFTER = re.compile(rf"\.?,?{_DATE_GAP}(?:19|20)\d\d(?!\d)")
+_YEAR_BEFORE = re.compile(rf"(?<!\d)(?:19|20)\d\d{_DATE_GAP}$")
+_DAY_AFTER = re.compile(rf"{_DATE_GAP}{_DAY}(?!\d)")
 _DAY_AND_YEAR_AFTER = re.compile(
-    rf"\.?[ \t\u00a0]+{_DAY}(?:st|nd|rd|th)?,?[ \t\u00a0]+(?:19|20)\d\d(?!\d)"
+    rf"\.?{_DATE_GAP}{_DAY}(?:st|nd|rd|th)?,?{_DATE_GAP}(?:19|20)\d\d(?!\d)"
 )
 
 
@@ -657,13 +661,20 @@ def _in_a_date(text: str, word: _Word) -> bool:
     """Whether a first name stands where a month does: "15 Jan 2024", "15. Mai 2024".
 
     English, German and French month names share their spelling with Jan and with Maja's
-    genitive. Between a day and a year, or before both, they are the month and never a person.
+    genitive. Between a day and a year, before both, or in year-first order ("2024-Jan-15"),
+    they are the month and never a person. Hyphen, slash and dot gaps count like spaces.
     """
     if _DAY_AND_YEAR_AFTER.match(text, word.end) is not None:
         return True
-    return (
+    before = max(0, word.start - 10)
+    if (
         _YEAR_AFTER.match(text, word.end) is not None
-        and _DAY_BEFORE.search(text, max(0, word.start - 8), word.start) is not None
+        and _DAY_BEFORE.search(text, before, word.start) is not None
+    ):
+        return True
+    return (
+        _DAY_AFTER.match(text, word.end) is not None
+        and _YEAR_BEFORE.search(text, before, word.start) is not None
     )
 
 

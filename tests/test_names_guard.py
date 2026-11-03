@@ -144,6 +144,10 @@ def test_a_surname_after_an_occupation_is_still_addressed():
         "Rechnungsdatum: 15. Mai 2024",
         "Date de facture : 15 mai 2024",
         "Invoice date: Jan 15, 2024",
+        "Invoice date: 15-Jan-2024",
+        "Invoice date: 15/Jan/2024",
+        "Invoice date: 2024-Jan-15",
+        "Rechnungsdatum: 15-Mai-2024",
     ],
 )
 def test_a_month_spelled_like_a_first_name_is_left_alone_in_a_date(text):
@@ -152,6 +156,8 @@ def test_a_month_spelled_like_a_first_name_is_left_alone_in_a_date(text):
 
 def test_a_first_name_after_a_number_is_still_a_name_outside_a_date():
     assert _found("o 15 Jan przyjdzie") == ["Jan"]
+    assert _found("Jan Kowalski przyjdzie") == ["Jan Kowalski"]
+    assert _found("z Janem") == ["Janem"]
 
 
 def test_a_word_that_is_also_a_name_needs_a_surname_or_a_form_of_address():
