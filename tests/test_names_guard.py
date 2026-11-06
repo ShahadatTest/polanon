@@ -160,6 +160,36 @@ def test_a_first_name_after_a_number_is_still_a_name_outside_a_date():
     assert _found("z Janem") == ["Janem"]
 
 
+@pytest.mark.parametrize("separator", ["-", "/", "."])
+@pytest.mark.parametrize(
+    "order", ["15{sep}Jan{sep}2024", "2024{sep}Jan{sep}15", "Jan{sep}15{sep}2024"]
+)
+def test_a_punctuated_date_uses_the_same_separator_on_both_sides(separator, order):
+    assert _found(order.format(sep=separator)) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("Nowak Anna 03/2024", "Nowak Anna"),
+        ("Nowak Anna 12.2024", "Nowak Anna"),
+        ("Sprawa: Nowak Anna 15/2024", "Nowak Anna"),
+        ("15.03.2024 Anna 8 h", "Anna"),
+        ("W 2023 Anna 2 razy była na urlopie.", "Anna"),
+        ("15 Jan/2024", "Jan"),
+        ("15/Jan-2024", "Jan"),
+        ("2024/Jan-15", "Jan"),
+        ("Jan-15/2024", "Jan"),
+        ("2024 Jan 15", "Jan"),
+    ],
+)
+async def test_a_name_next_to_numbers_is_masked_without_spacy(text, name):
+    assert _found(text) == [name]
+    result = await Anonymizer(default_guards(with_ner=False)).anonymize(text)
+    assert result.anonymized == text.replace(name, "<OSOBA_1>")
+    assert result.mapping == {"<OSOBA_1>": name}
+
+
 def test_a_word_that_is_also_a_name_needs_a_surname_or_a_form_of_address():
     assert _found("do 3 maja przyjdzie") == []
     assert _found("pani maja przyjdzie") == ["maja"]
